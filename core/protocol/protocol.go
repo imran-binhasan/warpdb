@@ -53,3 +53,23 @@ func Parse(reader *bufio.Reader) ([]string, error) {
 	return args, nil
 
 }
+
+func WriteSimpleString(w io.Writer, msg string) {
+	fmt.Fprintf(w, "+%s\r\n", msg)
+}
+
+func WriteError(w io.Writer, msg string) {
+	fmt.Fprintf(w,"-%s\r\n", msg)
+}
+
+func WriteInteger(w io.Writer, msg int) {
+	fmt.Fprintf(w, ":%d\r\n", msg)
+}
+
+func WriteBulkString (w io.Writer, msg string) {
+	fmt.Fprintf(w, "$%d\r\n%s\r\n", len(msg),msg)
+}
+
+func WriteNull (w io.Writer) {
+	fmt.Fprintf(w, "$-1\r\n")
+}
