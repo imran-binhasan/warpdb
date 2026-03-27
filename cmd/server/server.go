@@ -8,11 +8,14 @@ import (
 
 	"github.com/imran-binhasan/warpdb/core/commands"
 	"github.com/imran-binhasan/warpdb/core/protocol"
-	"github.com/imran-binhasan/warpdb/core/store"
+	"github.com/imran-binhasan/warpdb/engine"
 )
 
 func Server(){
-	s := store.NewStore()
+	engine, err := engine.NewWALEngine("wal.log")
+	if err != nil {
+		log.Fatal(err)
+	}
 	listener, err := net.Listen("tcp", ":6379")
 	if err != nil {
 		log.Fatal(err)
@@ -25,11 +28,12 @@ func Server(){
 			log.Println("Connection error", err)
 			continue
 		}
-		go handleClient(conn, s)
+		go handleClient(conn, engine)
 	}
 }
 
-func handleClient(conn net.Conn, s *store.Store) {
+
+func handleClient(conn net.Conn, engine engine.StorageEngine) {
 	defer conn.Close()
 	reader := bufio.NewReader(conn)
 	for {
@@ -38,6 +42,6 @@ func handleClient(conn net.Conn, s *store.Store) {
 			log.Println("Parse error", err)
 		break
 		} 
-		commands.Handle(args, s, conn)
+		commands.Handle(args, engine, conn)
 	}
 }

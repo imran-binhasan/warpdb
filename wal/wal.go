@@ -12,7 +12,7 @@ type Entry struct {
 	Args []string `json:"args"`
 }
 
-type Wal struct {
+type WAL struct {
 	file    *os.File
 	encoder *json.Encoder
 	mu      sync.Mutex
@@ -23,30 +23,30 @@ type Replayer interface {
 	Del(key string) error
 }
 
-func NewWAL(path string) (*Wal, error) {
+func NewWAL(path string) (*WAL, error) {
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0644)
 	if err != nil {
 		return nil, err
 	}
 	encoder := json.NewEncoder(file)
-	return &Wal{
+	return &WAL{
 		file:    file,
 		encoder: encoder,
 	}, nil
 }
 
-func (w *Wal) Write(op string, args []string) error {
+func (w *WAL) Write(op string, args []string) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	entry := Entry{op, args}
 	return w.encoder.Encode(entry)
 }
 
-func (w *Wal) Sync() error {
+func (w *WAL) Sync() error {
 	return w.file.Sync()
 }
 
-func (w *Wal) Replay(engine Replayer) error {
+func (w *WAL) Replay(engine Replayer) error {
 	_, err := w.file.Seek(0, 0)
 	if err != nil {
 		return err
@@ -67,7 +67,7 @@ func (w *Wal) Replay(engine Replayer) error {
 			if len(entry.Args) != 2 {
 				continue
 			}
-			engine.Set(entry.Args[0], entry.Args[2])
+			engine.Set(entry.Args[0], entry.Args[1])
 		case "DEL":
 			if len(entry.Args) != 1 {
 				continue
