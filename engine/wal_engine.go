@@ -28,6 +28,9 @@ func (e *WALEngine) Set(key, value string) error {
 	if err != nil {
 		return err
 	}
+	if err := e.wal.Sync(); err != nil {
+		return err
+	}
 	return e.mem.Set(key, value)
 }
 
@@ -40,9 +43,32 @@ func (e *WALEngine) Del(key string) error {
 	if err != nil {
 		return err
 	}
+	if err := e.wal.Sync(); err != nil {
+		return err
+	}
 	return e.mem.Del(key)
 }
 
 func (e *WALEngine) Exists(key string) bool {
 	return e.mem.Exists(key)
+}
+
+func (e *WALEngine) Incr(key string) (int, error) {
+	if err := e.wal.Write("INCR", []string{key}); err != nil {
+		return 0, err
+	}
+	if err := e.wal.Sync(); err != nil {
+		return 0, err
+	}
+	return e.mem.Incr(key)
+}
+
+func (e *WALEngine) Decr(key string) (int, error) {
+	if err := e.wal.Write("DECR", []string{key}); err != nil {
+		return 0, err
+	}
+	if err := e.wal.Sync(); err != nil {
+		return 0, err
+	}
+	return e.mem.Decr(key)
 }

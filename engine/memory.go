@@ -28,3 +28,11 @@ func (e *MemoryEngine) Del(key string) error {
 func (e *MemoryEngine) Exists(key string) bool {
 	return e.store.Exists(key)
 }
+
+func (e *MemoryEngine) Incr(key string) (int, error) {
+	return e.store.Incr(key)
+}
+
+func (e *MemoryEngine) Decr(key string) (int, error) {
+	return e.store.Decr(key)
+}

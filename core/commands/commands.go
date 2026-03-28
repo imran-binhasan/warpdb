@@ -18,6 +18,13 @@ func Handle(args []string, engine engine.StorageEngine, w io.Writer) {
 
 	switch strings.ToUpper(args[0]) {
 
+	case "PING":
+		if len(args) == 1 {
+			protocol.WriteSimpleString(w, "PONG")
+		} else {
+			protocol.WriteBulkString(w, args[1])
+		}
+
 	case "SET":
 		if len(args) != 3 {
 			protocol.WriteError(w, "ERR wrong number of arguments for SET")
@@ -49,30 +56,40 @@ func Handle(args []string, engine engine.StorageEngine, w io.Writer) {
 			return
 		}
 		protocol.WriteInteger(w, 1)
+	case "EXISTS":
+		if len(args) != 2 {
+			protocol.WriteError(w, "ERR wrong number of arguments for EXISTS")
+			return
+		}
+		if engine.Exists(args[1]) {
+			protocol.WriteInteger(w, 1)
+		} else {
+			protocol.WriteInteger(w, 0)
+		}
 
-	// case "INCR":
-	// 	if len(args) != 2 {
-	// 		protocol.WriteError(w, "ERR wrong number of arguments for INCR")
-	// 		return
-	// 	}
-	// 	res, err := engine.Incr(args[1])
-	// 	if err != nil {
-	// 		protocol.WriteError(w, "ERR value is not an integer")
-	// 		return
-	// 	}
-	// 	protocol.WriteInteger(w, res)
+	case "INCR":
+		if len(args) != 2 {
+			protocol.WriteError(w, "ERR wrong number of arguments for INCR")
+			return
+		}
+		res, err := engine.Incr(args[1])
+		if err != nil {
+			protocol.WriteError(w, "ERR value is not an integer or out of range")
+			return
+		}
+		protocol.WriteInteger(w, res)
 
-	// case "DECR":
-	// 	if len(args) != 2 {
-	// 		protocol.WriteError(w, "ERR wrong number of arguments for DECR")
-	// 		return
-	// 	}
-	// 	res, err := engine.Decr(args[1])
-	// 	if err != nil {
-	// 		protocol.WriteError(w, "ERR value is not an integer")
-	// 		return
-	// 	}
-	// 	protocol.WriteInteger(w, res)
+	case "DECR":
+		if len(args) != 2 {
+			protocol.WriteError(w, "ERR wrong number of arguments for DECR")
+			return
+		}
+		res, err := engine.Decr(args[1])
+		if err != nil {
+			protocol.WriteError(w, "ERR value is not an integer or out of range")
+			return
+		}
+		protocol.WriteInteger(w, res)
 
 	default:
 		protocol.WriteError(w, "ERR unknown command")

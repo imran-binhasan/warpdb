@@ -21,6 +21,8 @@ type WAL struct {
 type Replayer interface {
 	Set(key, value string) error
 	Del(key string) error
+	Incr(key string) (int, error)
+	Decr(key string) (int, error)
 }
 
 func NewWAL(path string) (*WAL, error) {
@@ -73,6 +75,16 @@ func (w *WAL) Replay(engine Replayer) error {
 				continue
 			}
 			engine.Del(entry.Args[0])
+		case "INCR":
+			if len(entry.Args) != 1 {
+				continue
+			}
+			engine.Incr(entry.Args[0])
+		case "DECR":
+			if len(entry.Args) != 1 {
+				continue
+			}
+			engine.Decr(entry.Args[0])
 		}
 	}
 	return nil
