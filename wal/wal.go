@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"io"
 	"os"
-	"sync"
 )
 
 type Entry struct {
@@ -12,10 +11,15 @@ type Entry struct {
 	Args []string `json:"args"`
 }
 
+type walEntry struct {
+	entry Entry
+	done chan error
+}
+
 type WAL struct {
 	file    *os.File
 	encoder *json.Encoder
-	mu      sync.Mutex
+	pending chan walEntry
 }
 
 type Replayer interface {
@@ -30,18 +34,22 @@ func NewWAL(path string) (*WAL, error) {
 	if err != nil {
 		return nil, err
 	}
-	encoder := json.NewEncoder(file)
-	return &WAL{
-		file:    file,
-		encoder: encoder,
-	}, nil
+	w := &WAL{
+		file: file,
+		encoder: json.NewEncoder(file),
+		pending: make(chan walEntry, 1024),
+	}
+	go w.runFlusher()
+	return  w,nil
 }
 
 func (w *WAL) Write(op string, args []string) error {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	entry := Entry{op, args}
-	return w.encoder.Encode(entry)
+	e := walEntry{
+		entry: Entry{Op: op, Args: args},
+		done: make(chan error, 1),
+	}
+	w.pending <- e
+	return <-e.done
 }
 
 func (w *WAL) Sync() error {
@@ -88,4 +96,55 @@ func (w *WAL) Replay(engine Replayer) error {
 		}
 	}
 	return nil
+}
+
+func (w *WAL) runFlusher(){
+	for {
+		first, ok := <- w.pending
+		if !ok {
+			return
+		}
+
+		batch := []walEntry{first}
+
+		drain:
+		for {
+			select {
+			case e, ok := <-w.pending:
+				if !ok {
+					break drain
+				}
+				batch = append(batch, e)
+			default:
+				break drain
+			}
+		}
+
+		var writeErr error
+		for _, e := range batch {
+			if err := w.encoder.Encode(e.entry); err != nil {
+				writeErr = err
+				break
+			}
+		}
+
+		var syncErr error
+		if writeErr == nil {
+			syncErr = w.file.Sync()
+		}
+
+		for _, e := range batch {
+			if writeErr != nil {
+				e.done <- writeErr
+			} else {
+				e.done <- syncErr
+			}
+		}
+		
+	}
+}
+
+func (w *WAL) Close() error {
+	close(w.pending)
+	return  w.file.Close()
 }
