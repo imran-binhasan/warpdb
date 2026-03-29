@@ -1,6 +1,10 @@
 package store
 
-import "testing"
+import (
+	"testing"
+	"strconv"
+)
+
 
 func TestSetGet(t *testing.T) {
 	s := NewStore()
@@ -51,4 +55,38 @@ func TestConcurrentIncr(t * testing.T) {
 	if val != "1000" {
 		t.Fatalf("expected value 1000 got %s", val)
 	}
+}
+
+func BenchmarkSet(b *testing.B) {
+    s := NewStore()
+    b.RunParallel(func(pb *testing.PB) {
+        i := 0
+        for pb.Next() {
+            s.Set(strconv.Itoa(i), "value")
+            i++
+        }
+    })
+}
+
+func BenchmarkGet(b *testing.B) {
+    s := NewStore()
+    for i := 0; i < 1000; i++ {
+        s.Set(strconv.Itoa(i), "value")
+    }
+    b.RunParallel(func(pb *testing.PB) {
+        i := 0
+        for pb.Next() {
+            s.Get(strconv.Itoa(i % 1000))
+            i++
+        }
+    })
+}
+
+func BenchmarkIncr(b *testing.B) {
+    s := NewStore()
+    b.RunParallel(func(pb *testing.PB) {
+        for pb.Next() {
+            s.Incr("counter")
+        }
+    })
 }

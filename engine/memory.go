@@ -1,6 +1,10 @@
 package engine
 
-import "github.com/imran-binhasan/warpdb/core/store"
+import (
+	"time"
+
+	"github.com/imran-binhasan/warpdb/core/store"
+)
 
 type MemoryEngine struct {
 	store *store.Store
@@ -35,4 +39,16 @@ func (e *MemoryEngine) Incr(key string) (int, error) {
 
 func (e *MemoryEngine) Decr(key string) (int, error) {
 	return e.store.Decr(key)
+}
+
+func (e *MemoryEngine) Expire(key string, ttl time.Duration) error {
+    return e.store.Expire(key, ttl)
+}
+
+func (e *MemoryEngine) TTL(key string) (time.Duration, error) {
+    return e.store.TTL(key)
+}
+
+func (e *MemoryEngine) Persist(key string) error {
+    return e.store.Persist(key)
 }

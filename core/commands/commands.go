@@ -2,10 +2,11 @@ package commands
 
 import (
 	"io"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/imran-binhasan/warpdb/core/protocol"
-	// "github.com/imran-binhasan/warpdb/core/store"
 	"github.com/imran-binhasan/warpdb/engine"
 )
 
@@ -91,6 +92,50 @@ func Handle(args []string, engine engine.StorageEngine, w io.Writer) {
 		}
 		protocol.WriteInteger(w, res)
 
+	case "EXPIRE":
+		if len(args) != 3 {
+			protocol.WriteError(w, "ERR wrong number of arguments for EXPIRE")
+			return
+		}
+		secs, err := strconv.Atoi(args[2])
+		if err != nil || secs < 0 {
+			protocol.WriteError(w, "ERR value is not an integer or out of range")
+			return
+		}
+		err = engine.Expire(args[1], time.Duration(secs)*time.Second)
+		if err != nil {
+			protocol.WriteInteger(w, 0)
+			return
+		}
+		protocol.WriteInteger(w, 1)
+
+	case "TTL":
+		if len(args) != 2 {
+			protocol.WriteError(w, "ERR wrong number of arguments for TTL")
+			return
+		}
+		remaining, _ := engine.TTL(args[1])
+		if remaining == -2 {
+			protocol.WriteInteger(w, -2)
+			return
+		}
+		if remaining == -1 {
+			protocol.WriteInteger(w, -1)
+			return
+		}
+		protocol.WriteInteger(w, int(remaining.Seconds()))
+
+	case "PERSIST":
+		if len(args) != 2 {
+			protocol.WriteError(w, "ERR wrong number of arguments for PERSIST")
+			return
+		}
+		err := engine.Persist(args[1])
+		if err != nil {
+			protocol.WriteInteger(w, 0)
+			return
+		}
+		protocol.WriteInteger(w, 1)
 	default:
 		protocol.WriteError(w, "ERR unknown command")
 	}

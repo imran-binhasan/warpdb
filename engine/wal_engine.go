@@ -1,6 +1,10 @@
 package engine
 
-import "github.com/imran-binhasan/warpdb/wal"
+import (
+	"time"
+
+	"github.com/imran-binhasan/warpdb/wal"
+)
 
 type WALEngine struct {
 	mem *MemoryEngine
@@ -59,4 +63,16 @@ func (e *WALEngine) Decr(key string) (int, error) {
 		return 0, err
 	}
 	return e.mem.Decr(key)
+}
+
+func (e *WALEngine) Expire(key string, ttl time.Duration) error {
+    return e.mem.Expire(key, ttl)
+}
+
+func (e *WALEngine) TTL(key string) (time.Duration, error) {
+    return e.mem.TTL(key)
+}
+
+func (e *WALEngine) Persist(key string) error {
+    return e.mem.Persist(key)
 }
