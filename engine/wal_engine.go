@@ -66,13 +66,21 @@ func (e *WALEngine) Decr(key string) (int, error) {
 }
 
 func (e *WALEngine) Expire(key string, ttl time.Duration) error {
-    return e.mem.Expire(key, ttl)
+	return e.mem.Expire(key, ttl)
 }
 
 func (e *WALEngine) TTL(key string) (time.Duration, error) {
-    return e.mem.TTL(key)
+	return e.mem.TTL(key)
 }
 
 func (e *WALEngine) Persist(key string) error {
-    return e.mem.Persist(key)
+	return e.mem.Persist(key)
+}
+
+func (e *WALEngine) Keys(pattern string) []string {
+	return e.mem.Keys(pattern)
+}
+
+func (e *WALEngine) FlushAll() {
+	e.mem.FlushAll()
 }

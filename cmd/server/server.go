@@ -11,7 +11,7 @@ import (
 	"github.com/imran-binhasan/warpdb/engine"
 )
 
-func Server(){
+func Server() {
 	engine, err := engine.NewWALEngine("wal.log")
 	if err != nil {
 		log.Fatal(err)
@@ -32,7 +32,6 @@ func Server(){
 	}
 }
 
-
 func handleClient(conn net.Conn, engine engine.StorageEngine) {
 	defer conn.Close()
 	reader := bufio.NewReader(conn)
@@ -40,8 +39,8 @@ func handleClient(conn net.Conn, engine engine.StorageEngine) {
 		args, err := protocol.Parse(reader)
 		if err != nil {
 			log.Println("Parse error", err)
-		break
-		} 
+			break
+		}
 		commands.Handle(args, engine, conn)
 	}
 }

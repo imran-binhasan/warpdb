@@ -136,6 +136,18 @@ func Handle(args []string, engine engine.StorageEngine, w io.Writer) {
 			return
 		}
 		protocol.WriteInteger(w, 1)
+
+	case "KEYS":
+		if len(args) != 2 {
+			protocol.WriteError(w, "ERR wrong number of arguments for KEYS")
+			return
+		}
+		keys := engine.Keys(args[1])
+		protocol.WriteArray(w, keys)
+
+	case "FLUSHALL":
+		engine.FlushAll()
+		protocol.WriteSimpleString(w, "OK")
 	default:
 		protocol.WriteError(w, "ERR unknown command")
 	}

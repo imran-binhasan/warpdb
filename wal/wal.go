@@ -13,7 +13,7 @@ type Entry struct {
 
 type walEntry struct {
 	entry Entry
-	done chan error
+	done  chan error
 }
 
 type WAL struct {
@@ -35,18 +35,18 @@ func NewWAL(path string) (*WAL, error) {
 		return nil, err
 	}
 	w := &WAL{
-		file: file,
+		file:    file,
 		encoder: json.NewEncoder(file),
 		pending: make(chan walEntry, 1024),
 	}
 	go w.runFlusher()
-	return  w,nil
+	return w, nil
 }
 
 func (w *WAL) Write(op string, args []string) error {
 	e := walEntry{
 		entry: Entry{Op: op, Args: args},
-		done: make(chan error, 1),
+		done:  make(chan error, 1),
 	}
 	w.pending <- e
 	return <-e.done
@@ -98,16 +98,16 @@ func (w *WAL) Replay(engine Replayer) error {
 	return nil
 }
 
-func (w *WAL) runFlusher(){
+func (w *WAL) runFlusher() {
 	for {
-		first, ok := <- w.pending
+		first, ok := <-w.pending
 		if !ok {
 			return
 		}
 
 		batch := []walEntry{first}
 
-		drain:
+	drain:
 		for {
 			select {
 			case e, ok := <-w.pending:
@@ -140,11 +140,11 @@ func (w *WAL) runFlusher(){
 				e.done <- syncErr
 			}
 		}
-		
+
 	}
 }
 
 func (w *WAL) Close() error {
 	close(w.pending)
-	return  w.file.Close()
+	return w.file.Close()
 }

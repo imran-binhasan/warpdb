@@ -42,13 +42,21 @@ func (e *MemoryEngine) Decr(key string) (int, error) {
 }
 
 func (e *MemoryEngine) Expire(key string, ttl time.Duration) error {
-    return e.store.Expire(key, ttl)
+	return e.store.Expire(key, ttl)
 }
 
 func (e *MemoryEngine) TTL(key string) (time.Duration, error) {
-    return e.store.TTL(key)
+	return e.store.TTL(key)
 }
 
 func (e *MemoryEngine) Persist(key string) error {
-    return e.store.Persist(key)
+	return e.store.Persist(key)
+}
+
+func (e *MemoryEngine) Keys(pattern string) []string {
+	return e.store.Keys(pattern)
+}
+
+func (e *MemoryEngine) FlushAll() {
+	e.store.FlushAll()
 }

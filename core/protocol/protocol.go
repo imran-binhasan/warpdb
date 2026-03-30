@@ -14,8 +14,8 @@ func Parse(reader *bufio.Reader) ([]string, error) {
 	}
 	line = strings.TrimSpace(line)
 	if len(line) == 0 || line[0] != '*' {
-    return nil, fmt.Errorf("expected array got %s", line)
-}
+		return nil, fmt.Errorf("expected array got %s", line)
+	}
 	var count int
 	_, err = fmt.Sscanf(line[1:], "%d", &count)
 	if err != nil {
@@ -40,7 +40,7 @@ func Parse(reader *bufio.Reader) ([]string, error) {
 		}
 
 		data := make([]byte, strLength+2)
-		_,err = io.ReadFull(reader, data)
+		_, err = io.ReadFull(reader, data)
 		if err != nil {
 			return nil, err
 		}
@@ -59,17 +59,24 @@ func WriteSimpleString(w io.Writer, msg string) {
 }
 
 func WriteError(w io.Writer, msg string) {
-	fmt.Fprintf(w,"-%s\r\n", msg)
+	fmt.Fprintf(w, "-%s\r\n", msg)
 }
 
 func WriteInteger(w io.Writer, msg int) {
 	fmt.Fprintf(w, ":%d\r\n", msg)
 }
 
-func WriteBulkString (w io.Writer, msg string) {
-	fmt.Fprintf(w, "$%d\r\n%s\r\n", len(msg),msg)
+func WriteBulkString(w io.Writer, msg string) {
+	fmt.Fprintf(w, "$%d\r\n%s\r\n", len(msg), msg)
 }
 
-func WriteNull (w io.Writer) {
+func WriteNull(w io.Writer) {
 	fmt.Fprintf(w, "$-1\r\n")
+}
+
+func WriteArray(w io.Writer, items []string) {
+	fmt.Fprintf(w, "*%d\r\n", len(items))
+	for _, item := range items {
+		WriteBulkString(w, item)
+	}
 }
