@@ -1,0 +1,12 @@
+{"op":"SET","args":["counter","0"]}
+{"op":"INCR","args":["counter"]}
+{"op":"INCR","args":["counter"]}
+{"op":"INCR","args":["counter"]}
+{"op":"DECR","args":["counter"]}
+{"op":"SET","args":["name","Imran"]}
+{"op":"DEL","args":["name"]}
+{"op":"SET","args":["intro","My name is Imran"]}
+{"op":"SET","args":["intro","hello"]}
+{"op":"SET","args":["name","Imran"]}
+{"op":"INCR","args":["counter"]}
+{"op":"INCR","args":["counter"]}
