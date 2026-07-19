@@ -1,0 +1,12 @@
+{
+    "port": 6379,
+    "wal_path": "wal.log",
+    "log_level": "info",
+    "requirepass": "",
+    "maxclients": 10000,
+    "wal_max_size_mb": 64,
+    "wal_auto_compact": true,
+    "timeout_seconds": 300,
+    "maxmemory_mb": 0,
+    "databases": 16
+}

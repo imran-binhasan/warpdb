@@ -10,15 +10,21 @@ import (
 	"github.com/imran-binhasan/warpdb/engine"
 )
 
-func Handle(args []string, engine engine.StorageEngine, w io.Writer) {
+type Handler struct {
+	engine engine.StorageEngine
+}
 
+func NewHandler(eng engine.StorageEngine) *Handler {
+	return &Handler{engine: eng}
+}
+
+func (h *Handler) Handle(args []string, w io.Writer) {
 	if len(args) == 0 {
 		protocol.WriteError(w, "ERR empty command")
 		return
 	}
 
 	switch strings.ToUpper(args[0]) {
-
 	case "PING":
 		if len(args) == 1 {
 			protocol.WriteSimpleString(w, "PONG")
@@ -31,7 +37,7 @@ func Handle(args []string, engine engine.StorageEngine, w io.Writer) {
 			protocol.WriteError(w, "ERR wrong number of arguments for SET")
 			return
 		}
-		engine.Set(args[1], args[2])
+		h.engine.Set(args[1], args[2])
 		protocol.WriteSimpleString(w, "OK")
 
 	case "GET":
@@ -39,7 +45,7 @@ func Handle(args []string, engine engine.StorageEngine, w io.Writer) {
 			protocol.WriteError(w, "ERR wrong number of arguments for GET")
 			return
 		}
-		res, err := engine.Get(args[1])
+		res, err := h.engine.Get(args[1])
 		if err != nil {
 			protocol.WriteNull(w)
 			return
@@ -51,18 +57,19 @@ func Handle(args []string, engine engine.StorageEngine, w io.Writer) {
 			protocol.WriteError(w, "ERR wrong number of arguments for DEL")
 			return
 		}
-		err := engine.Del(args[1])
+		err := h.engine.Del(args[1])
 		if err != nil {
 			protocol.WriteInteger(w, 0)
 			return
 		}
 		protocol.WriteInteger(w, 1)
+
 	case "EXISTS":
 		if len(args) != 2 {
 			protocol.WriteError(w, "ERR wrong number of arguments for EXISTS")
 			return
 		}
-		if engine.Exists(args[1]) {
+		if h.engine.Exists(args[1]) {
 			protocol.WriteInteger(w, 1)
 		} else {
 			protocol.WriteInteger(w, 0)
@@ -73,7 +80,7 @@ func Handle(args []string, engine engine.StorageEngine, w io.Writer) {
 			protocol.WriteError(w, "ERR wrong number of arguments for INCR")
 			return
 		}
-		res, err := engine.Incr(args[1])
+		res, err := h.engine.Incr(args[1])
 		if err != nil {
 			protocol.WriteError(w, "ERR value is not an integer or out of range")
 			return
@@ -85,7 +92,7 @@ func Handle(args []string, engine engine.StorageEngine, w io.Writer) {
 			protocol.WriteError(w, "ERR wrong number of arguments for DECR")
 			return
 		}
-		res, err := engine.Decr(args[1])
+		res, err := h.engine.Decr(args[1])
 		if err != nil {
 			protocol.WriteError(w, "ERR value is not an integer or out of range")
 			return
@@ -102,7 +109,7 @@ func Handle(args []string, engine engine.StorageEngine, w io.Writer) {
 			protocol.WriteError(w, "ERR value is not an integer or out of range")
 			return
 		}
-		err = engine.Expire(args[1], time.Duration(secs)*time.Second)
+		err = h.engine.Expire(args[1], time.Duration(secs)*time.Second)
 		if err != nil {
 			protocol.WriteInteger(w, 0)
 			return
@@ -114,7 +121,7 @@ func Handle(args []string, engine engine.StorageEngine, w io.Writer) {
 			protocol.WriteError(w, "ERR wrong number of arguments for TTL")
 			return
 		}
-		remaining, _ := engine.TTL(args[1])
+		remaining, _ := h.engine.TTL(args[1])
 		if remaining == -2 {
 			protocol.WriteInteger(w, -2)
 			return
@@ -130,7 +137,7 @@ func Handle(args []string, engine engine.StorageEngine, w io.Writer) {
 			protocol.WriteError(w, "ERR wrong number of arguments for PERSIST")
 			return
 		}
-		err := engine.Persist(args[1])
+		err := h.engine.Persist(args[1])
 		if err != nil {
 			protocol.WriteInteger(w, 0)
 			return
@@ -142,14 +149,14 @@ func Handle(args []string, engine engine.StorageEngine, w io.Writer) {
 			protocol.WriteError(w, "ERR wrong number of arguments for KEYS")
 			return
 		}
-		keys := engine.Keys(args[1])
+		keys := h.engine.Keys(args[1])
 		protocol.WriteArray(w, keys)
 
 	case "FLUSHALL":
-		engine.FlushAll()
+		h.engine.FlushAll()
 		protocol.WriteSimpleString(w, "OK")
+
 	default:
 		protocol.WriteError(w, "ERR unknown command")
 	}
-
 }

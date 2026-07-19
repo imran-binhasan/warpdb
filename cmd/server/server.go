@@ -2,45 +2,144 @@ package server
 
 import (
 	"bufio"
+	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
 
 	"github.com/imran-binhasan/warpdb/core/commands"
 	"github.com/imran-binhasan/warpdb/core/protocol"
 	"github.com/imran-binhasan/warpdb/engine"
+	"github.com/imran-binhasan/warpdb/internal/config"
 )
 
-func Server() {
-	engine, err := engine.NewWALEngine("wal.log")
+type Server struct {
+	cfg    config.Config
+	engine engine.StorageEngine
+	ln     net.Listener
+	sem    chan struct{}
+}
+
+func Serve(cfg config.Config) {
+	eng, err := engine.NewWALEngine(cfg.WALPath)
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("failed to initialize storage engine", "error", err)
+		os.Exit(1)
 	}
-	listener, err := net.Listen("tcp", ":6379")
+	slog.Info("storage engine initialized", "wal", cfg.WALPath)
+
+	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", cfg.Port))
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("failed to listen", "error", err)
+		os.Exit(1)
 	}
-	defer listener.Close()
-	fmt.Println("WarpDB listening on :6379")
+
+	srv := &Server{
+		cfg:    cfg,
+		engine: eng,
+		ln:     ln,
+		sem:    make(chan struct{}, cfg.MaxClients),
+	}
+
+	slog.Info("WarpDB listening", "port", cfg.Port, "max_clients", cfg.MaxClients)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		sig := <-sigCh
+		slog.Info("shutting down", "signal", sig.String())
+		cancel()
+		ln.Close()
+	}()
+
 	for {
-		conn, err := listener.Accept()
+		conn, err := ln.Accept()
 		if err != nil {
-			log.Println("Connection error", err)
-			continue
+			select {
+			case <-ctx.Done():
+				slog.Info("server stopped")
+				return
+			default:
+				slog.Error("accept error", "error", err)
+				continue
+			}
 		}
-		go handleClient(conn, engine)
+		select {
+		case srv.sem <- struct{}{}:
+			go srv.handleClient(ctx, conn)
+		case <-ctx.Done():
+			conn.Close()
+			return
+		default:
+			protocol.WriteError(conn, "ERR max number of clients reached")
+			conn.Close()
+		}
 	}
 }
 
-func handleClient(conn net.Conn, engine engine.StorageEngine) {
-	defer conn.Close()
+func (srv *Server) handleClient(ctx context.Context, conn net.Conn) {
+	defer func() {
+		conn.Close()
+		<-srv.sem
+	}()
+
+	remoteAddr := conn.RemoteAddr().String()
+	slog.Debug("client connected", "addr", remoteAddr)
+
 	reader := bufio.NewReader(conn)
+	handler := commands.NewHandler(srv.engine)
+
+	authenticated := srv.cfg.RequirePass == ""
+
 	for {
+		if srv.cfg.Timeout() > 0 {
+			dl, _ := ctx.Deadline()
+			conn.SetDeadline(dl)
+		}
+
 		args, err := protocol.Parse(reader)
 		if err != nil {
-			log.Println("Parse error", err)
-			break
+			if ctx.Err() != nil {
+				slog.Debug("client disconnected during shutdown", "addr", remoteAddr)
+				return
+			}
+			slog.Debug("client disconnected", "addr", remoteAddr, "error", err)
+			return
 		}
-		commands.Handle(args, engine, conn)
+
+		if !authenticated {
+			if len(args) > 0 && strings.ToUpper(args[0]) == "AUTH" {
+				if len(args) == 2 && args[1] == srv.cfg.RequirePass {
+					authenticated = true
+					protocol.WriteSimpleString(conn, "OK")
+					slog.Debug("client authenticated", "addr", remoteAddr)
+					continue
+				}
+				protocol.WriteError(conn, "ERR invalid password")
+				continue
+			}
+			if !isUnauthenticatedCommand(args) {
+				protocol.WriteError(conn, "NOAUTH Authentication required.")
+				continue
+			}
+		}
+
+		handler.Handle(args, conn)
 	}
+}
+
+func isUnauthenticatedCommand(args []string) bool {
+	if len(args) == 0 {
+		return false
+	}
+	cmd := strings.ToUpper(args[0])
+	return cmd == "PING" || cmd == "QUIT" || cmd == "COMMAND"
 }
