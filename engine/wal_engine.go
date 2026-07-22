@@ -84,3 +84,7 @@ func (e *WALEngine) Keys(pattern string) []string {
 func (e *WALEngine) FlushAll() {
 	e.mem.FlushAll()
 }
+
+func (e *WALEngine) Size() int {
+	return e.mem.Size()
+}

@@ -15,6 +15,7 @@ import (
 	"github.com/imran-binhasan/warpdb/core/protocol"
 	"github.com/imran-binhasan/warpdb/engine"
 	"github.com/imran-binhasan/warpdb/internal/config"
+	"github.com/imran-binhasan/warpdb/internal/stats"
 )
 
 type Server struct {
@@ -22,6 +23,7 @@ type Server struct {
 	engine engine.StorageEngine
 	ln     net.Listener
 	sem    chan struct{}
+	stats  *stats.ServerStats
 }
 
 func Serve(cfg config.Config) {
@@ -43,6 +45,7 @@ func Serve(cfg config.Config) {
 		engine: eng,
 		ln:     ln,
 		sem:    make(chan struct{}, cfg.MaxClients),
+		stats:  stats.New(),
 	}
 
 	slog.Info("WarpDB listening", "port", cfg.Port, "max_clients", cfg.MaxClients)
@@ -92,10 +95,13 @@ func (srv *Server) handleClient(ctx context.Context, conn net.Conn) {
 	}()
 
 	remoteAddr := conn.RemoteAddr().String()
+	srv.stats.TotalConnections.Add(1)
+	srv.stats.ActiveConnections.Add(1)
+	defer srv.stats.ActiveConnections.Add(-1)
 	slog.Debug("client connected", "addr", remoteAddr)
 
 	reader := bufio.NewReader(conn)
-	handler := commands.NewHandler(srv.engine)
+	handler := commands.NewHandler(srv.engine, &srv.cfg, srv.stats)
 
 	authenticated := srv.cfg.RequirePass == ""
 

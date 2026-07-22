@@ -14,4 +14,5 @@ type StorageEngine interface {
 	Persist(key string) error
 	Keys(pattern string) []string
 	FlushAll()
+	Size() int
 }

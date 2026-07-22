@@ -313,3 +313,14 @@ func (s *Store) FlushAll() {
 		sh.mu.Unlock()
 	}
 }
+
+func (s *Store) Size() int {
+	total := 0
+	for i := 0; i < numShards; i++ {
+		sh := &s.shards[i]
+		sh.mu.RLock()
+		total += len(sh.data)
+		sh.mu.RUnlock()
+	}
+	return total
+}

@@ -60,3 +60,7 @@ func (e *MemoryEngine) Keys(pattern string) []string {
 func (e *MemoryEngine) FlushAll() {
 	e.store.FlushAll()
 }
+
+func (e *MemoryEngine) Size() int {
+	return e.store.Size()
+}
