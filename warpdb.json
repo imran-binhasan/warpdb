@@ -1,6 +1,6 @@
 {
     "port": 6379,
-    "wal_path": "wal.log",
+    "wal_path": "wal",
     "log_level": "info",
     "requirepass": "",
     "maxclients": 10000,

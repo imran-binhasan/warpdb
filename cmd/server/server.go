@@ -27,7 +27,7 @@ type Server struct {
 }
 
 func Serve(cfg config.Config) {
-	eng, err := engine.NewWALEngine(cfg.WALPath)
+	eng, err := engine.NewWALEngine(cfg.WALPath, cfg.WalMaxSizeMB)
 	if err != nil {
 		slog.Error("failed to initialize storage engine", "error", err)
 		os.Exit(1)

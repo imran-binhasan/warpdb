@@ -37,7 +37,7 @@ func (c Config) Timeout() time.Duration {
 func Default() Config {
 	return Config{
 		Port:            6379,
-		WALPath:         "wal.log",
+		WALPath:         "wal",
 		LogLevel:        "info",
 		MaxClients:      10000,
 		WalMaxSizeMB:    64,
