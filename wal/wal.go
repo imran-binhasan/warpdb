@@ -32,6 +32,15 @@ type Replayer interface {
 	Incr(key string) (int, error)
 	Decr(key string) (int, error)
 	FlushAll()
+	LPush(key string, values ...string) int
+	RPush(key string, values ...string) int
+	LPop(key string) (string, error)
+	RPop(key string) (string, error)
+	SAdd(key string, members ...string) int
+	SRem(key string, members ...string) int
+	SPop(key string) (string, error)
+	HSet(key, field, value string) int
+	HDel(key string, fields ...string) int
 }
 
 type segmentManifest struct {
@@ -161,6 +170,25 @@ func (w *WAL) replaySegment(engine Replayer, seg string) error {
 			engine.Decr(record.Key)
 		case OpFlush:
 			engine.FlushAll()
+		case OpLPush:
+			engine.LPush(record.Key, record.Value)
+		case OpRPush:
+			engine.RPush(record.Key, record.Value)
+		case OpLPop:
+			engine.LPop(record.Key)
+		case OpRPop:
+			engine.RPop(record.Key)
+		case OpSAdd:
+			engine.SAdd(record.Key, record.Value)
+		case OpSRem:
+			engine.SRem(record.Key, record.Value)
+		case OpSPop:
+			engine.SPop(record.Key)
+		case OpHSet:
+			field, val := record.HashFieldAndValue()
+			engine.HSet(record.Key, field, val)
+		case OpHDel:
+			engine.HDel(record.Key, record.Value)
 		}
 	}
 }
@@ -351,6 +379,24 @@ func opToCode(op string) byte {
 		return OpDecr
 	case "FLUSHALL":
 		return OpFlush
+	case "LPUSH":
+		return OpLPush
+	case "RPUSH":
+		return OpRPush
+	case "LPOP":
+		return OpLPop
+	case "RPOP":
+		return OpRPop
+	case "SADD":
+		return OpSAdd
+	case "SREM":
+		return OpSRem
+	case "SPOP":
+		return OpSPop
+	case "HSET":
+		return OpHSet
+	case "HDEL":
+		return OpHDel
 	default:
 		return OpSet
 	}

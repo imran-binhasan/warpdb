@@ -5,6 +5,7 @@ import (
 	"errors"
 	"hash/crc32"
 	"io"
+	"strings"
 )
 
 const (
@@ -15,6 +16,15 @@ const (
 	OpIncr  byte = 0x03
 	OpDecr  byte = 0x04
 	OpFlush byte = 0x05
+	OpLPush byte = 0x06
+	OpRPush byte = 0x07
+	OpLPop  byte = 0x08
+	OpRPop  byte = 0x09
+	OpSAdd  byte = 0x0A
+	OpSRem  byte = 0x0B
+	OpSPop  byte = 0x0C
+	OpHSet  byte = 0x0D
+	OpHDel  byte = 0x0E
 )
 
 var crc32Table = crc32.MakeTable(crc32.IEEE)
@@ -27,6 +37,72 @@ type Record struct {
 	Key      string
 	Value    string
 	ExpireAt int64
+}
+
+func MakeRecord(op byte, args []string) Record {
+	r := Record{Op: op}
+	switch op {
+	case OpSet:
+		if len(args) >= 2 {
+			r.Key = args[0]
+			r.Value = args[1]
+		}
+	case OpDel, OpIncr, OpDecr, OpLPop, OpRPop, OpSPop:
+		if len(args) >= 1 {
+			r.Key = args[0]
+		}
+	case OpLPush, OpRPush:
+		if len(args) >= 2 {
+			r.Key = args[0]
+			r.Value = args[1]
+		}
+	case OpSAdd, OpSRem:
+		if len(args) >= 2 {
+			r.Key = args[0]
+			r.Value = args[1]
+		}
+	case OpHSet:
+		if len(args) >= 3 {
+			r.Key = args[0]
+			r.Value = "\x00" + args[1] + "\x00" + args[2]
+		}
+	case OpHDel:
+		if len(args) >= 2 {
+			r.Key = args[0]
+			r.Value = args[1]
+		}
+	case OpFlush:
+	}
+	return r
+}
+
+func (r Record) HashFieldAndValue() (string, string) {
+	if r.Op != OpHSet {
+		return "", ""
+	}
+	parts := strings.SplitN(r.Value, "\x00", 3)
+	if len(parts) < 3 {
+		return "", ""
+	}
+	return parts[1], parts[2]
+}
+
+func (r Record) Args() []string {
+	switch r.Op {
+	case OpSet:
+		return []string{r.Key, r.Value}
+	case OpDel, OpIncr, OpDecr:
+		return []string{r.Key}
+	case OpFlush:
+		return nil
+	case OpHSet:
+		field, val := r.HashFieldAndValue()
+		return []string{r.Key, field, val}
+	case OpHDel:
+		return []string{r.Key, r.Value}
+	default:
+		return []string{r.Key, r.Value}
+	}
 }
 
 func EncodeRecord(r Record) []byte {
@@ -110,35 +186,6 @@ func DecodeRecord(data []byte) (Record, error) {
 		Value:    value,
 		ExpireAt: expireAt,
 	}, nil
-}
-
-func MakeRecord(op byte, args []string) Record {
-	r := Record{Op: op}
-	switch op {
-	case OpSet:
-		if len(args) >= 2 {
-			r.Key = args[0]
-			r.Value = args[1]
-		}
-	case OpDel, OpIncr, OpDecr:
-		if len(args) >= 1 {
-			r.Key = args[0]
-		}
-	case OpFlush:
-	}
-	return r
-}
-
-func (r Record) Args() []string {
-	switch r.Op {
-	case OpSet:
-		return []string{r.Key, r.Value}
-	case OpDel, OpIncr, OpDecr:
-		return []string{r.Key}
-	case OpFlush:
-		return nil
-	}
-	return nil
 }
 
 type RecordEncoder struct {
