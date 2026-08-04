@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"strconv"
 	"testing"
+	"time"
 )
 
 // --- unit tests (unchanged) ---
@@ -300,4 +301,232 @@ func BenchmarkShardDistribution(b *testing.B) {
 	b.ReportMetric(variance, "variance")
 
 	_ = strconv.Itoa(avg) // prevent unused import
+}
+
+// --- list tests ---
+
+func TestLPushRPush(t *testing.T) {
+	s := NewStore()
+	s.RPush("mylist", "a", "b", "c")
+	s.LPush("mylist", "x")
+	if s.LLen("mylist") != 4 {
+		t.Fatalf("expected len 4 got %d", s.LLen("mylist"))
+	}
+}
+
+func TestLPopRPop(t *testing.T) {
+	s := NewStore()
+	s.RPush("mylist", "a", "b", "c")
+	val, err := s.LPop("mylist")
+	if err != nil || val != "a" {
+		t.Fatalf("expected 'a' got '%s' err=%v", val, err)
+	}
+	val, err = s.RPop("mylist")
+	if err != nil || val != "c" {
+		t.Fatalf("expected 'c' got '%s' err=%v", val, err)
+	}
+	if s.LLen("mylist") != 1 {
+		t.Fatalf("expected len 1 got %d", s.LLen("mylist"))
+	}
+}
+
+func TestLRange(t *testing.T) {
+	s := NewStore()
+	s.RPush("mylist", "a", "b", "c", "d", "e")
+	vals := s.LRange("mylist", 1, 3)
+	if len(vals) != 3 || vals[0] != "b" || vals[1] != "c" || vals[2] != "d" {
+		t.Fatalf("unexpected LRange result: %v", vals)
+	}
+}
+
+func TestLIndex(t *testing.T) {
+	s := NewStore()
+	s.RPush("mylist", "a", "b", "c")
+	val, err := s.LIndex("mylist", -1)
+	if err != nil || val != "c" {
+		t.Fatalf("expected 'c' got '%s'", val)
+	}
+}
+
+// --- set tests ---
+
+func TestSAdd(t *testing.T) {
+	s := NewStore()
+	added := s.SAdd("myset", "a", "b", "a")
+	if added != 2 {
+		t.Fatalf("expected 2 added got %d", added)
+	}
+	if s.SCard("myset") != 2 {
+		t.Fatalf("expected card 2 got %d", s.SCard("myset"))
+	}
+}
+
+func TestSIsMember(t *testing.T) {
+	s := NewStore()
+	s.SAdd("myset", "a", "b")
+	if !s.SIsMember("myset", "a") {
+		t.Fatal("expected a to be member")
+	}
+	if s.SIsMember("myset", "c") {
+		t.Fatal("expected c not to be member")
+	}
+}
+
+func TestSRem(t *testing.T) {
+	s := NewStore()
+	s.SAdd("myset", "a", "b", "c")
+	removed := s.SRem("myset", "a", "d")
+	if removed != 1 {
+		t.Fatalf("expected 1 removed got %d", removed)
+	}
+	if s.SCard("myset") != 2 {
+		t.Fatalf("expected card 2 got %d", s.SCard("myset"))
+	}
+}
+
+func TestSPop(t *testing.T) {
+	s := NewStore()
+	s.SAdd("myset", "a")
+	val, err := s.SPop("myset")
+	if err != nil || val != "a" {
+		t.Fatalf("expected 'a' got '%s'", val)
+	}
+	if s.SCard("myset") != 0 {
+		t.Fatal("set should be empty")
+	}
+}
+
+func TestSRandMember(t *testing.T) {
+	s := NewStore()
+	s.SAdd("myset", "only")
+	val, err := s.SRandMember("myset")
+	if err != nil || val != "only" {
+		t.Fatalf("expected 'only' got '%s'", val)
+	}
+}
+
+func TestSMembers(t *testing.T) {
+	s := NewStore()
+	s.SAdd("myset", "a", "b")
+	members := s.SMembers("myset")
+	if len(members) != 2 {
+		t.Fatalf("expected 2 members got %d", len(members))
+	}
+}
+
+// --- hash tests ---
+
+func TestHSetHGet(t *testing.T) {
+	s := NewStore()
+	added := s.HSet("myhash", "field1", "value1")
+	if added != 1 {
+		t.Fatalf("expected 1 added got %d", added)
+	}
+	val, err := s.HGet("myhash", "field1")
+	if err != nil || val != "value1" {
+		t.Fatalf("expected 'value1' got '%s'", val)
+	}
+}
+
+func TestHSetDuplicate(t *testing.T) {
+	s := NewStore()
+	s.HSet("myhash", "f1", "v1")
+	added := s.HSet("myhash", "f1", "v2")
+	if added != 0 {
+		t.Fatalf("expected 0 (update) got %d", added)
+	}
+}
+
+func TestHDel(t *testing.T) {
+	s := NewStore()
+	s.HSet("myhash", "f1", "v1")
+	s.HSet("myhash", "f2", "v2")
+	removed := s.HDel("myhash", "f1")
+	if removed != 1 {
+		t.Fatalf("expected 1 removed got %d", removed)
+	}
+	if s.HLen("myhash") != 1 {
+		t.Fatalf("expected len 1 got %d", s.HLen("myhash"))
+	}
+}
+
+func TestHGetAll(t *testing.T) {
+	s := NewStore()
+	s.HSet("myhash", "a", "1")
+	s.HSet("myhash", "b", "2")
+	all := s.HGetAll("myhash")
+	if len(all) != 4 {
+		t.Fatalf("expected 4 entries got %d", len(all))
+	}
+}
+
+func TestHKeysHVals(t *testing.T) {
+	s := NewStore()
+	s.HSet("myhash", "a", "1")
+	keys := s.HKeys("myhash")
+	if len(keys) != 1 || keys[0] != "a" {
+		t.Fatalf("unexpected keys: %v", keys)
+	}
+	vals := s.HVals("myhash")
+	if len(vals) != 1 || vals[0] != "1" {
+		t.Fatalf("unexpected vals: %v", vals)
+	}
+}
+
+func TestHExists(t *testing.T) {
+	s := NewStore()
+	s.HSet("myhash", "field", "val")
+	if !s.HExists("myhash", "field") {
+		t.Fatal("field should exist")
+	}
+	if s.HExists("myhash", "nope") {
+		t.Fatal("nope should not exist")
+	}
+}
+
+// --- mixed operations ---
+
+func TestDelRemovesAllTypes(t *testing.T) {
+	s := NewStore()
+	s.Set("str", "val")
+	s.RPush("list", "a")
+	s.SAdd("set", "m")
+	s.HSet("hash", "f", "v")
+
+	s.Del("str")
+	s.Del("list")
+	s.Del("set")
+	s.Del("hash")
+
+	if s.Exists("str") || s.Exists("list") || s.Exists("set") || s.Exists("hash") {
+		t.Fatal("all keys should be deleted")
+	}
+}
+
+// --- expiry across types ---
+
+func TestExpireOnList(t *testing.T) {
+	s := NewStore()
+	s.RPush("mylist", "a")
+	if err := s.Expire("mylist", 100*time.Millisecond); err != nil {
+		t.Fatal(err)
+	}
+	if !s.Exists("mylist") {
+		t.Fatal("list should exist before expiry")
+	}
+	time.Sleep(200 * time.Millisecond)
+	if s.Exists("mylist") {
+		t.Fatal("list should be expired after TTL")
+	}
+}
+
+func TestSize(t *testing.T) {
+	s := NewStore()
+	s.Set("a", "1")
+	s.RPush("b", "x")
+	s.SAdd("c", "y")
+	s.HSet("d", "f", "z")
+	if s.Size() != 4 {
+		t.Fatalf("expected Size 4 got %d", s.Size())
+	}
 }
