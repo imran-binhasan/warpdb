@@ -364,6 +364,24 @@ make clean    — remove build artifacts and wal.log
 
 ---
 
+## Changelog
+
+### 1.0.0 — Aug 7, 2026 (production-ready)
+
+- **Aug 7**: Docker support (multi-stage image, docker-compose), .gitignore, production deployment guide
+- **Aug 4**: Comprehensive test suite — protocol parsing, WAL format, config, integration (real TCP server)
+- **Jul 31**: List, Set, Hash data types (LPUSH/RPUSH/LPOP/RPOP/LLEN/LRANGE/LINDEX, SADD/SREM/SMEMBERS/SISMEMBER/SCARD/SPOP/SRANDMEMBER, HSET/HGET/HDEL/HGETALL/HKEYS/HVALS/HEXISTS/HLEN/HMSET/HMGET). INCRBY, DECRBY, APPEND, STRLEN, MSET, MGET, RENAME, TYPE, RANDOMKEY
+- **Jul 26**: Binary WAL format with CRC32 checksums, segment rotation, compaction
+- **Jul 22**: INFO command, CONFIG GET/SET, DBSIZE, atomic server stats tracking
+- **Jul 19**: JSON config file, CLI flags, structured logging (slog), graceful shutdown, AUTH command, connection limiting
+
+### 0.1.0 — Jul 18, 2026 (initial release)
+
+- 12 Redis commands: PING, SET, GET, DEL, EXISTS, INCR, DECR, EXPIRE, TTL, PERSIST, KEYS, FLUSHALL
+- 256-shard concurrent hashmap, batched WAL fsync, dual-strategy TTL eviction, zero-alloc hot path
+
+---
+
 ## What's Next
 
 - Replication and clustering support
