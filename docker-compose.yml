@@ -1,0 +1,40 @@
+version: "3.8"
+
+services:
+  warpdb:
+    build: .
+    container_name: warpdb
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./warpdb.json:/etc/warpdb/warpdb.json:ro
+      - warpdb_data:/data
+    restart: unless-stopped
+    sysctls:
+      - net.core.somaxconn=65535
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2"
+
+  warpdb-noauth:
+    profiles: ["dev"]
+    build: .
+    container_name: warpdb-dev
+    ports:
+      - "6380:6379"
+    volumes:
+      - ./warpdb.json:/etc/warpdb/warpdb.json:ro
+      - warpdb_dev_data:/data
+    environment:
+      - WAL_DIR=/data/wal
+    command: ["-port", "6380"]
+
+volumes:
+  warpdb_data:
+  warpdb_dev_data:

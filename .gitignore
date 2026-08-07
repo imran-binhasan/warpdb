@@ -1,0 +1,7 @@
+wal/
+*.log
+warpdb
+warpdb.exe
+.DS_Store
+*.test
+*.out
